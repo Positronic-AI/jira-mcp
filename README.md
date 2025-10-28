@@ -38,12 +38,18 @@ Connect to multiple Jira instances simultaneously:
 
 ### 1. Installation
 
+**Option A: Install from PyPI (Recommended)**
+
 ```bash
-git clone https://github.com/yourusername/jira-mcp.git
+pip install jira-mcp-server
+```
+
+**Option B: Install from source**
+
+```bash
+git clone https://github.com/Positronic-AI/jira-mcp.git
 cd jira-mcp
-python3 -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -e .
 ```
 
 ### 2. Get Your Jira API Token
@@ -60,7 +66,7 @@ export JIRA_MYCOMPANY_URL="https://your-company.atlassian.net"
 export JIRA_MYCOMPANY_EMAIL="your.email@company.com"
 export JIRA_MYCOMPANY_TOKEN="your_api_token_here"
 
-python server.py --test-connection mycompany
+jira-mcp --test-connection mycompany
 ```
 
 You should see:
@@ -84,8 +90,8 @@ Add this configuration:
 {
   "mcpServers": {
     "jira": {
-      "command": "/absolute/path/to/jira-mcp/.venv/bin/python",
-      "args": ["/absolute/path/to/jira-mcp/server.py", "--instance", "mycompany"],
+      "command": "jira-mcp",
+      "args": ["--instance", "mycompany"],
       "env": {
         "JIRA_MYCOMPANY_URL": "https://your-company.atlassian.net",
         "JIRA_MYCOMPANY_EMAIL": "your.email@company.com",
@@ -96,7 +102,7 @@ Add this configuration:
 }
 ```
 
-**Important**: Use absolute paths, not `~` or relative paths.
+**Note**: If you installed in a virtual environment, use the full path to `jira-mcp`, e.g., `/path/to/venv/bin/jira-mcp`
 
 ### 5. Restart Claude Desktop
 
@@ -143,8 +149,8 @@ To connect multiple Jira instances:
 {
   "mcpServers": {
     "jira-work": {
-      "command": "/path/to/.venv/bin/python",
-      "args": ["/path/to/server.py", "--instance", "work"],
+      "command": "jira-mcp",
+      "args": ["--instance", "work"],
       "env": {
         "JIRA_WORK_URL": "https://company.atlassian.net",
         "JIRA_WORK_EMAIL": "you@company.com",
@@ -152,8 +158,8 @@ To connect multiple Jira instances:
       }
     },
     "jira-personal": {
-      "command": "/path/to/.venv/bin/python",
-      "args": ["/path/to/server.py", "--instance", "personal"],
+      "command": "jira-mcp",
+      "args": ["--instance", "personal"],
       "env": {
         "JIRA_PERSONAL_URL": "https://personal.atlassian.net",
         "JIRA_PERSONAL_EMAIL": "you@personal.com",
@@ -210,7 +216,7 @@ The server exposes these MCP tools:
 - Verify your API token is correct
 - Check the Jira URL has no trailing slash
 - Ensure your email matches the Atlassian account
-- Test with: `python server.py --test-connection <instance>`
+- Test with: `jira-mcp --test-connection <instance>`
 
 ### Claude Desktop doesn't see the server
 
@@ -221,8 +227,8 @@ The server exposes these MCP tools:
 
 ### "Module not found" errors
 
-- Ensure you're using the venv Python: `/path/to/.venv/bin/python`
-- Verify dependencies are installed: `pip install -r requirements.txt`
+- Ensure `jira-mcp-server` is installed: `pip install jira-mcp-server`
+- If using a virtual environment, ensure it's activated or use the full path
 
 ### "Field cannot be set" errors
 
@@ -245,17 +251,15 @@ Areas we'd especially appreciate help:
 
 ```bash
 # Clone and setup
-git clone https://github.com/yourusername/jira-mcp.git
+git clone https://github.com/Positronic-AI/jira-mcp.git
 cd jira-mcp
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+pip install -e ".[dev]"
 
 # Test connection
 export JIRA_TEST_URL="https://test.atlassian.net"
 export JIRA_TEST_EMAIL="test@example.com"
 export JIRA_TEST_TOKEN="test_token"
-python server.py --test-connection test
+jira-mcp --test-connection test
 ```
 
 ## License

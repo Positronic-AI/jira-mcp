@@ -3,7 +3,7 @@
 import logging
 from typing import Any, Dict, List, Optional
 import httpx
-from config import JiraInstanceConfig
+from jira_mcp.config import JiraInstanceConfig
 
 logger = logging.getLogger(__name__)
 

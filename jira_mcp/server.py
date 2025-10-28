@@ -12,8 +12,8 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
-from config import get_instance_config
-from jira_client import JiraClient
+from jira_mcp.config import get_instance_config
+from jira_mcp.jira_client import JiraClient
 
 # Setup logging
 logging.basicConfig(
@@ -481,7 +481,8 @@ def test_connection(instance_name: str):
         return False
 
 
-if __name__ == "__main__":
+def cli():
+    """Command-line interface entry point."""
     parser = argparse.ArgumentParser(description="Simple Jira MCP Server")
     parser.add_argument(
         "--instance",
@@ -503,3 +504,7 @@ if __name__ == "__main__":
 
     # Run the MCP server
     asyncio.run(main(args.instance))
+
+
+if __name__ == "__main__":
+    cli()
