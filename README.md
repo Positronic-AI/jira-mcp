@@ -41,7 +41,12 @@ Connect to multiple Jira instances simultaneously:
 **Option A: Install from PyPI (Recommended)**
 
 ```bash
-pip install jira-mcp-server
+pip install jira-mcp-simple
+```
+
+**Note**: If `jira-mcp` command is not found, add Python's bin to PATH:
+```bash
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 **Option B: Install from source**
@@ -227,7 +232,7 @@ The server exposes these MCP tools:
 
 ### "Module not found" errors
 
-- Ensure `jira-mcp-server` is installed: `pip install jira-mcp-server`
+- Ensure `jira-mcp-simple` is installed: `pip install jira-mcp-simple`
 - If using a virtual environment, ensure it's activated or use the full path
 
 ### "Field cannot be set" errors
