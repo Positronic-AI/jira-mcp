@@ -22,11 +22,18 @@ This implementation focuses on:
 ### Core Operations
 - 🔍 **Search issues** with JQL (Jira Query Language)
 - 📄 **Get issue details** with full field information
-- ➕ **Create issues** with descriptions, labels, and custom fields
+- ➕ **Create issues** with descriptions, labels, parent/epic links, and custom fields
 - ✏️ **Update issues** (summary, description, labels, etc.)
 - 💬 **Add comments** to issues
 - 🔄 **Transition issues** between statuses
 - 📋 **List projects** accessible to the user
+
+### Advanced Features
+- 🔗 **Link issues** with relationships (Relates, Blocks, Duplicates, etc.)
+- 📊 **Epic management** - Create tasks under epics and query epic children
+- 🔄 **Get available transitions** before transitioning issues
+- 👥 **User management** - Search users and assign issues
+- 🎯 **Assignee control** - Assign or unassign issues to team members
 
 ### Multi-Instance Support
 Connect to multiple Jira instances simultaneously:
@@ -133,12 +140,22 @@ Create a new task in PROJECT called "Test MCP integration"
 
 Once configured, you can use natural language with Claude:
 
+**Basic Operations:**
 - "Find all open bugs in the MOBILE project"
 - "Show me high priority issues assigned to me"
 - "Create a task about fixing the login page"
 - "Add a comment to PROJ-42 saying the fix is deployed"
 - "Move PROJ-42 to In Progress"
 - "Update the summary of PROJ-42 to include more details"
+
+**Advanced Operations:**
+- "Create a new epic called 'User Authentication System'"
+- "Create a task under epic PROJ-10 for implementing login"
+- "Link PROJ-42 to PROJ-50 with 'Blocks' relationship"
+- "Show me all tasks under epic PROJ-10"
+- "What transitions are available for PROJ-42?"
+- "Search for user john.doe and assign PROJ-42 to them"
+- "Unassign PROJ-42"
 
 ### Direct JQL Queries
 
@@ -204,15 +221,25 @@ jira-mcp/
 
 The server exposes these MCP tools:
 
+### Core Tools
 | Tool | Description |
 |------|-------------|
 | `jira_search` | Search issues using JQL with pagination |
 | `jira_get_issue` | Get detailed issue information |
-| `jira_create_issue` | Create new issues with custom fields |
+| `jira_create_issue` | Create new issues with custom fields and parent links |
 | `jira_update_issue` | Update existing issue fields |
 | `jira_add_comment` | Add comments to issues |
 | `jira_transition_issue` | Change issue status |
 | `jira_list_projects` | List accessible projects |
+
+### Advanced Tools
+| Tool | Description |
+|------|-------------|
+| `jira_link_issues` | Create relationships between issues (Relates, Blocks, etc.) |
+| `jira_get_epic_issues` | Get all issues belonging to an epic |
+| `jira_get_transitions` | Get available transitions for an issue |
+| `jira_search_users` | Search users by name or email |
+| `jira_assign_issue` | Assign or unassign issues to users |
 
 ## Troubleshooting
 

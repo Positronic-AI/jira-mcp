@@ -203,6 +203,10 @@ TOOLS: List[Tool] = [
                     "items": {"type": "string"},
                     "description": "List of labels (optional)",
                 },
+                "parent": {
+                    "type": "string",
+                    "description": "Parent issue key for Epic/subtask relationships (e.g., 'EPIC-123') (optional)",
+                },
             },
             "required": ["project_key", "summary", "issue_type"],
         },
@@ -233,6 +237,10 @@ TOOLS: List[Tool] = [
                     "type": "array",
                     "items": {"type": "string"},
                     "description": "New labels list (optional)",
+                },
+                "parent": {
+                    "type": "string",
+                    "description": "Parent issue key for Epic/subtask relationships (e.g., 'EPIC-123') (optional)",
                 },
             },
             "required": ["issue_key"],
@@ -286,6 +294,102 @@ TOOLS: List[Tool] = [
             "properties": {},
         },
     ),
+    Tool(
+        name="jira_link_issues",
+        description=(
+            "Create a link between two issues. "
+            "Common link types: 'Relates', 'Blocks', 'Is Blocked By', 'Duplicates', 'Clones'"
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "inward_issue": {
+                    "type": "string",
+                    "description": "Key of the inward issue (e.g., 'PROJ-123')",
+                },
+                "outward_issue": {
+                    "type": "string",
+                    "description": "Key of the outward issue (e.g., 'PROJ-456')",
+                },
+                "link_type": {
+                    "type": "string",
+                    "description": "Type of link (default: 'Relates')",
+                    "default": "Relates",
+                },
+            },
+            "required": ["inward_issue", "outward_issue"],
+        },
+    ),
+    Tool(
+        name="jira_get_epic_issues",
+        description="Get all issues that belong to a specific epic",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "epic_key": {
+                    "type": "string",
+                    "description": "Epic issue key (e.g., 'PROJ-123')",
+                },
+                "max_results": {
+                    "type": "integer",
+                    "description": "Maximum number of results to return (default: 100)",
+                    "default": 100,
+                },
+            },
+            "required": ["epic_key"],
+        },
+    ),
+    Tool(
+        name="jira_get_transitions",
+        description="Get all available transitions for an issue (useful before transitioning)",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "issue_key": {
+                    "type": "string",
+                    "description": "Issue key (e.g., 'PROJ-123')",
+                },
+            },
+            "required": ["issue_key"],
+        },
+    ),
+    Tool(
+        name="jira_search_users",
+        description="Search for users by name or email to get their account ID for assignment",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Search query (name or email)",
+                },
+                "max_results": {
+                    "type": "integer",
+                    "description": "Maximum number of results to return (default: 50)",
+                    "default": 50,
+                },
+            },
+            "required": ["query"],
+        },
+    ),
+    Tool(
+        name="jira_assign_issue",
+        description="Assign an issue to a user (or unassign if no account_id provided)",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "issue_key": {
+                    "type": "string",
+                    "description": "Issue key (e.g., 'PROJ-123')",
+                },
+                "account_id": {
+                    "type": "string",
+                    "description": "User's account ID (use jira_search_users to find it) (optional)",
+                },
+            },
+            "required": ["issue_key"],
+        },
+    ),
 ]
 
 
@@ -337,6 +441,7 @@ async def handle_tool_call(name: str, arguments: Dict[str, Any]) -> List[TextCon
             description = arguments.get("description")
             priority = arguments.get("priority")
             labels = arguments.get("labels")
+            parent = arguments.get("parent")
 
             result = jira_client.create_issue(
                 project_key=project_key,
@@ -345,12 +450,14 @@ async def handle_tool_call(name: str, arguments: Dict[str, Any]) -> List[TextCon
                 description=description,
                 priority=priority,
                 labels=labels,
+                parent=parent,
             )
 
             issue_key = result.get("key")
+            parent_info = f"\nParent: {parent}" if parent else ""
             return [TextContent(
                 type="text",
-                text=f"Created issue {issue_key}\nURL: {jira_client.base_url}/browse/{issue_key}"
+                text=f"Created issue {issue_key}{parent_info}\nURL: {jira_client.base_url}/browse/{issue_key}"
             )]
 
         elif name == "jira_update_issue":
@@ -374,6 +481,8 @@ async def handle_tool_call(name: str, arguments: Dict[str, Any]) -> List[TextCon
                 fields["priority"] = {"name": arguments["priority"]}
             if "labels" in arguments:
                 fields["labels"] = arguments["labels"]
+            if "parent" in arguments:
+                fields["parent"] = {"key": arguments["parent"]}
 
             jira_client.update_issue(issue_key, fields)
             return [TextContent(type="text", text=f"Updated issue {issue_key}")]
@@ -406,6 +515,78 @@ async def handle_tool_call(name: str, arguments: Dict[str, Any]) -> List[TextCon
                 output.append(f"[{key}] {name} ({project_type})")
 
             return [TextContent(type="text", text="\n".join(output))]
+
+        elif name == "jira_link_issues":
+            inward_issue = arguments["inward_issue"]
+            outward_issue = arguments["outward_issue"]
+            link_type = arguments.get("link_type", "Relates")
+
+            jira_client.link_issues(inward_issue, outward_issue, link_type)
+            return [TextContent(
+                type="text",
+                text=f"Linked {inward_issue} to {outward_issue} with link type '{link_type}'"
+            )]
+
+        elif name == "jira_get_epic_issues":
+            epic_key = arguments["epic_key"]
+            max_results = arguments.get("max_results", 100)
+
+            issues = jira_client.get_epic_issues(epic_key, max_results)
+
+            if not issues:
+                return [TextContent(type="text", text=f"No issues found under epic {epic_key}")]
+
+            output = [f"Found {len(issues)} issue(s) under epic {epic_key}:\n"]
+            for issue in issues:
+                output.append(format_issue_summary(issue))
+                output.append("")
+
+            return [TextContent(type="text", text="\n".join(output))]
+
+        elif name == "jira_get_transitions":
+            issue_key = arguments["issue_key"]
+
+            transitions = jira_client.get_available_transitions(issue_key)
+
+            if not transitions:
+                return [TextContent(type="text", text=f"No transitions available for {issue_key}")]
+
+            output = [f"Available transitions for {issue_key}:\n"]
+            for transition in transitions:
+                name = transition.get("name", "Unknown")
+                to_status = transition.get("to", {}).get("name", "Unknown")
+                transition_id = transition.get("id", "N/A")
+                output.append(f"  - {name} → {to_status} (ID: {transition_id})")
+
+            return [TextContent(type="text", text="\n".join(output))]
+
+        elif name == "jira_search_users":
+            query = arguments["query"]
+            max_results = arguments.get("max_results", 50)
+
+            users = jira_client.search_users(query, max_results)
+
+            if not users:
+                return [TextContent(type="text", text=f"No users found matching: {query}")]
+
+            output = [f"Found {len(users)} user(s) matching '{query}':\n"]
+            for user in users:
+                display_name = user.get("displayName", "Unknown")
+                email = user.get("emailAddress", "N/A")
+                account_id = user.get("accountId", "N/A")
+                output.append(f"  - {display_name} ({email})")
+                output.append(f"    Account ID: {account_id}")
+
+            return [TextContent(type="text", text="\n".join(output))]
+
+        elif name == "jira_assign_issue":
+            issue_key = arguments["issue_key"]
+            account_id = arguments.get("account_id")
+
+            jira_client.assign_issue(issue_key, account_id)
+
+            assignee_text = f"to account {account_id}" if account_id else "(unassigned)"
+            return [TextContent(type="text", text=f"Assigned {issue_key} {assignee_text}")]
 
         else:
             return [TextContent(type="text", text=f"Unknown tool: {name}")]

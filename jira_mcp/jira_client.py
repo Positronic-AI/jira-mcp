@@ -162,6 +162,7 @@ class JiraClient:
         priority: Optional[str] = None,
         assignee: Optional[str] = None,
         labels: Optional[List[str]] = None,
+        parent: Optional[str] = None,
         **extra_fields,
     ) -> Dict[str, Any]:
         """
@@ -175,6 +176,7 @@ class JiraClient:
             priority: Priority name (e.g., 'High', 'Medium', 'Low') (optional)
             assignee: Assignee account ID or email (optional)
             labels: List of labels (optional)
+            parent: Parent issue key for Epic/subtask relationships (optional)
             **extra_fields: Additional custom fields
 
         Returns:
@@ -213,6 +215,10 @@ class JiraClient:
         # Add labels if provided
         if labels:
             fields["labels"] = labels
+
+        # Add parent if provided (for Epic link or subtask)
+        if parent:
+            fields["parent"] = {"key": parent}
 
         # Add any extra fields
         fields.update(extra_fields)
@@ -322,3 +328,130 @@ class JiraClient:
         logger.info("Listing all projects")
         response = self.client.get(f"{self.api_base}/project")
         return self._handle_response(response)
+
+    def link_issues(
+        self,
+        inward_issue: str,
+        outward_issue: str,
+        link_type: str = "Relates",
+    ) -> Dict[str, Any]:
+        """
+        Create a link between two issues.
+
+        Args:
+            inward_issue: Key of the inward issue (e.g., 'PROJ-123')
+            outward_issue: Key of the outward issue (e.g., 'PROJ-456')
+            link_type: Type of link (e.g., 'Relates', 'Blocks', 'Duplicates')
+
+        Returns:
+            Dictionary with created link details
+
+        Raises:
+            Exception: On API errors
+        """
+        payload = {
+            "type": {"name": link_type},
+            "inwardIssue": {"key": inward_issue},
+            "outwardIssue": {"key": outward_issue},
+        }
+
+        logger.info(f"Linking {inward_issue} to {outward_issue} with type {link_type}")
+        response = self.client.post(f"{self.api_base}/issueLink", json=payload)
+        return self._handle_response(response)
+
+    def get_issue_links(self, issue_key: str) -> List[Dict[str, Any]]:
+        """
+        Get all links for an issue.
+
+        Args:
+            issue_key: Issue key (e.g., 'PROJ-123')
+
+        Returns:
+            List of issue links
+
+        Raises:
+            Exception: On API errors
+        """
+        logger.info(f"Getting links for issue {issue_key}")
+        issue = self.get_issue(issue_key, fields=["issuelinks"])
+        return issue.get("fields", {}).get("issuelinks", [])
+
+    def get_epic_issues(self, epic_key: str, max_results: int = 100) -> List[Dict[str, Any]]:
+        """
+        Get all issues that belong to an epic.
+
+        Args:
+            epic_key: Epic issue key (e.g., 'PROJ-123')
+            max_results: Maximum number of results to return (default: 100)
+
+        Returns:
+            List of issues belonging to the epic
+
+        Raises:
+            Exception: On API errors
+        """
+        jql = f'parent = {epic_key}'
+        logger.info(f"Getting issues for epic {epic_key}")
+        result = self.search_issues(jql=jql, max_results=max_results)
+        return result.get("issues", [])
+
+    def get_available_transitions(self, issue_key: str) -> List[Dict[str, Any]]:
+        """
+        Get all available transitions for an issue.
+
+        Args:
+            issue_key: Issue key (e.g., 'PROJ-123')
+
+        Returns:
+            List of available transitions with id, name, and to status
+
+        Raises:
+            Exception: On API errors
+        """
+        logger.info(f"Getting available transitions for {issue_key}")
+        response = self.client.get(f"{self.api_base}/issue/{issue_key}/transitions")
+        transitions_data = self._handle_response(response)
+        return transitions_data.get("transitions", [])
+
+    def search_users(self, query: str, max_results: int = 50) -> List[Dict[str, Any]]:
+        """
+        Search for users by name or email.
+
+        Args:
+            query: Search query (name or email)
+            max_results: Maximum number of results to return (default: 50)
+
+        Returns:
+            List of user dictionaries with accountId, displayName, emailAddress
+
+        Raises:
+            Exception: On API errors
+        """
+        params = {
+            "query": query,
+            "maxResults": max_results,
+        }
+
+        logger.info(f"Searching for users matching: {query}")
+        response = self.client.get(f"{self.api_base}/user/search", params=params)
+        return self._handle_response(response)
+
+    def assign_issue(self, issue_key: str, account_id: Optional[str] = None) -> None:
+        """
+        Assign an issue to a user, or unassign if account_id is None.
+
+        Args:
+            issue_key: Issue key (e.g., 'PROJ-123')
+            account_id: User's account ID, or None to unassign (optional)
+
+        Raises:
+            Exception: On API errors
+        """
+        payload = {"accountId": account_id} if account_id else None
+
+        logger.info(f"Assigning issue {issue_key} to {account_id or 'unassigned'}")
+        response = self.client.put(
+            f"{self.api_base}/issue/{issue_key}/assignee",
+            json=payload
+        )
+        self._handle_response(response)
