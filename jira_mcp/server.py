@@ -390,6 +390,36 @@ TOOLS: List[Tool] = [
             "required": ["issue_key"],
         },
     ),
+    Tool(
+        name="jira_update_issue_dates",
+        description=(
+            "Update date fields on a Jira issue for backdating or timeline management. "
+            "Dates should be in ISO 8601 format (YYYY-MM-DDTHH:MM:SS.sss+0000 or YYYY-MM-DD). "
+            "Note: Some date fields may be restricted by Jira permissions."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "issue_key": {
+                    "type": "string",
+                    "description": "Issue key (e.g., 'PROJ-123')",
+                },
+                "created": {
+                    "type": "string",
+                    "description": "Creation date in ISO 8601 format (e.g., '2024-01-15T10:30:00.000+0000') (optional)",
+                },
+                "resolutiondate": {
+                    "type": "string",
+                    "description": "Resolution date in ISO 8601 format (e.g., '2024-02-20T15:45:00.000+0000') (optional)",
+                },
+                "duedate": {
+                    "type": "string",
+                    "description": "Due date in YYYY-MM-DD format (e.g., '2024-03-01') (optional)",
+                },
+            },
+            "required": ["issue_key"],
+        },
+    ),
 ]
 
 
@@ -587,6 +617,26 @@ async def handle_tool_call(name: str, arguments: Dict[str, Any]) -> List[TextCon
 
             assignee_text = f"to account {account_id}" if account_id else "(unassigned)"
             return [TextContent(type="text", text=f"Assigned {issue_key} {assignee_text}")]
+
+        elif name == "jira_update_issue_dates":
+            issue_key = arguments["issue_key"]
+            fields = {}
+
+            # Add date fields if provided
+            if "created" in arguments:
+                fields["created"] = arguments["created"]
+            if "resolutiondate" in arguments:
+                fields["resolutiondate"] = arguments["resolutiondate"]
+            if "duedate" in arguments:
+                fields["duedate"] = arguments["duedate"]
+
+            if not fields:
+                return [TextContent(type="text", text=f"No date fields provided to update for {issue_key}")]
+
+            jira_client.update_issue(issue_key, fields)
+
+            updated_fields = ", ".join(fields.keys())
+            return [TextContent(type="text", text=f"Updated date fields on {issue_key}: {updated_fields}")]
 
         else:
             return [TextContent(type="text", text=f"Unknown tool: {name}")]
